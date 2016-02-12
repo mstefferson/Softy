@@ -22,7 +22,7 @@ Ny      = 64;
 %%%%%%%%% Initial density parameters%%%%%%%%%%%%%%%%%%
 % Dimensionless  scaled concentration bc > 1.501 or bc < 1.499 if
 % perturbing about equilbrum
-bc  = 0.01;     % Scaled concentration
+bc  = 1.0;     % Scaled concentration
 R   = 1;        % Disk raidus
 Rs  = 2;        % Soft shoulder distance
 Lx  = 10*R;     % Box length
@@ -34,8 +34,8 @@ t_rec       = 1e-1; %time interval for recording dynamics
 t_tot       = 10;   %total time
 ss_epsilon  = 1e-8;                          %steady state condition
 
-NumModesX   = 4;
-NumModesY   = 4;
+NumModesX   = 1;
+NumModesY   = 1;
 
 % Weight of the spatial sinusoidal perturbation. %
 % Perturbations added to rho(i,j,k) = 1. Must be small
@@ -75,10 +75,11 @@ ky0 = Ny/2+1;
 for i = 1:NumModesX
     for j = 1:NumModesY
        rho = rho +  WeightPos * c * ( ...
-            rand() * cos( GridObj.kx(kx0 + i) .* GridObj.x2D + GridObj.ky(ky0 + j) * GridObj.y2D ) + ...
-            rand() * sin( GridObj.kx(kx0 + i) .* GridObj.x2D + GridObj.ky(ky0 + j) * GridObj.y2D ) );
+            cos( GridObj.kx(kx0 + i) .* GridObj.x2D + GridObj.ky(ky0 + j) * GridObj.y2D ) + ...
+            sin( GridObj.kx(kx0 + i) .* GridObj.x2D + GridObj.ky(ky0 + j) * GridObj.y2D ) );
     end
 end
+% keyboard
 rho_FT = fftshift(fftn(rho));
 
 global Density_rec
@@ -105,7 +106,7 @@ j_record = 2;     %Record holder
 Prop = exp(Lop .* TimeObj.dt);   % Exponentiate the elements
 
 %%%%%%%%%%%%%%%%%%% Interaction stuff%%%%%%%%%%%%%%%%%%%%%%%%%%
-V = SSpotential(Nx,Ny,Lx,Ly,R,Rs,eps, a);
+V    = SSpotential(Nx,Ny,Lx,Ly,R,Rs,eps, a);
 V_FT = fftshift(fftn( V ) );
 
 %Hard rod interactions

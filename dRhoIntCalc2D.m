@@ -28,7 +28,7 @@ function [NegDivFluxExcess_FT] = ...
 %Now includes the correct scale
 
 [MuEx_FT] = ParamObj.Lx * ParamObj.Ly / ...
-(ParamObj.Nx * ParamObj.Ny) * rho_FT * V_FT;
+(ParamObj.Nx * ParamObj.Ny) .* rho_FT .* V_FT;
 
 % MuEx_FT    = MuEx2_FT+MuEx3_FT;
 %Takes its derivative in k-space
@@ -57,6 +57,8 @@ Jy_FT = fftshift(fftn(jy));
 % Calculate the - divergence of the interaction flux
 NegDivFluxExcess_FT = - sqrt(-1) .* ( GridObj.kx2D .* Jx_FT + ...
     GridObj.ky2D .* Jy_FT  );
+
+NegDivFluxExcess = real( ifftn( ifftshift( NegDivFluxExcess_FT  ) ) );
 
 % keyboard
 
