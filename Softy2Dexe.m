@@ -16,13 +16,13 @@ Interactions = 1;
 SaveMe       = 1;
 
 %%%%%%%%%%%%% Box and Rod Parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%
-Nx      = 64;
-Ny      = 64;
+Nx      = 128;
+Ny      = 128;
 
 %%%%%%%%% Initial density parameters%%%%%%%%%%%%%%%%%%
 % Dimensionless  scaled concentration bc > 1.501 or bc < 1.499 if
 % perturbing about equilbrum
-bc  = 1.0;     % Scaled concentration
+bc  = 5.0;     % Scaled concentration
 R   = 1;        % Disk raidus
 Rs  = 2;        % Soft shoulder distance
 Lx  = 10*R;     % Box length
@@ -31,7 +31,7 @@ Ly  = 10*R;     % Box length
 %%%%%%%%%%%%%%%Time recording %%%%%%%%%%%%%%%%%%%%%%%%%%
 dt          = 1e-3; %time step
 t_rec       = 1e-1; %time interval for recording dynamics
-t_tot       = 10;   %total time
+t_tot       = 4;   %total time
 ss_epsilon  = 1e-8;                          %steady state condition
 
 NumModesX   = 1;
@@ -56,7 +56,7 @@ Mob_pos  = Mob;
 Mob_rot  = Mob;
 D = Mob / Tmp;
 % Concentration and rod stuff
-b       = 2 * pi * R ^2;            % Average excluded a guess for now.
+b       = R ^2;            % Average excluded a guess for now.
 c       = bc / b;                   % Concentration
 Norm    = c * Lx * Ly;              % number of particles
 
@@ -217,7 +217,8 @@ F( length(TimeRecVec) ) = struct('cdata',[],'colormap',[]);
 for i = 1:length(TimeRecVec)
     titstr = sprintf('t = %f', TimeRecVec(i) );
     title(titstr);
-    surf( GridObj.x,GridObj.y,Density_rec(:,:,i) );
+    pcolor( GridObj.x,GridObj.y,Density_rec(:,:,i) );
+    colorbar;
     drawnow;
     F(i) = getframe;
 end
