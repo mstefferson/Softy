@@ -12,7 +12,7 @@ Move = 0; % Move files to a nice location
 trial    = 7;
 
 %%%%%% Turn on/off interactions%%%%%%%%%
-Interactions = 0;
+Interactions = 1;
 SaveMe       = 1;
 
 %%%%%%%%%%%%% Box and Rod Parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -22,15 +22,15 @@ Ny      = 64;
 %%%%%%%%% Initial density parameters%%%%%%%%%%%%%%%%%%
 % Dimensionless  scaled concentration bc > 1.501 or bc < 1.499 if
 % perturbing about equilbrum
-bc  = 1.0;     % Scaled concentration
+bc  = 0.01;     % Scaled concentration
 R   = 1;        % Disk raidus
 Rs  = 2;        % Soft shoulder distance
 Lx  = 10*R;     % Box length
 Ly  = 10*R;     % Box length
 
 %%%%%%%%%%%%%%%Time recording %%%%%%%%%%%%%%%%%%%%%%%%%%
-dt     = 1e-3; %time step
-t_rec  = 1e-1; %time interval for recording dynamics
+dt          = 1e-3; %time step
+t_rec       = 1e-1; %time interval for recording dynamics
 t_tot       = 10;   %total time
 ss_epsilon  = 1e-8;                          %steady state condition
 
@@ -39,24 +39,16 @@ NumModesY   = 4;
 
 % Weight of the spatial sinusoidal perturbation. %
 % Perturbations added to rho(i,j,k) = 1. Must be small
-WeightPos   = 1e-3;
+WeightPos   = 1e-2;
 Random      = 0;       % Random perturbation coeffs
 
 % Stepping method
-% 0: AB1
-% 1: AB2
-% 2: HAB1
-% 3: HAB2
-% 4: BHAB1
-% 5: BHAB2
-% 6: Exponential Euler
-
-StepMeth = 0;  % Only 4 for now
+StepMeth = 0;  % Not in yet
 
 %%%%%%%%%%%%%%%%%%%%% Physical Parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 Tmp    = 1;            % Temperature
 eps    = 1.0;
-a      = 0.0;
+a      = 0.1;
 
 % mobility
 Mob = 1;
@@ -77,9 +69,16 @@ TimeObj = struct( 'dt', dt, 't_rec', t_rec, 't_tot', t_tot, 'ss_epsilon',ss_epsi
     'N_time', Nt, 'N_rec',N_rec,'N_count',N_count);
 
 %% Initialize rho. Very rough
-
-rho =  c .* ones(Nx,Ny) + WeightPos * ...
-    cos( GridObj.kx(Nx/2+2) .* GridObj.x2D + GridObj.ky(Ny/2+2) * GridObj.y2D );
+rho =  c .* ones(Nx,Ny);
+kx0 = Nx/2+1;
+ky0 = Ny/2+1;
+for i = 1:NumModesX
+    for j = 1:NumModesY
+       rho = rho +  WeightPos * c * ( ...
+            rand() * cos( GridObj.kx(kx0 + i) .* GridObj.x2D + GridObj.ky(ky0 + j) * GridObj.y2D ) + ...
+            rand() * sin( GridObj.kx(kx0 + i) .* GridObj.x2D + GridObj.ky(ky0 + j) * GridObj.y2D ) );
+    end
+end
 rho_FT = fftshift(fftn(rho));
 
 global Density_rec
@@ -105,15 +104,13 @@ j_record = 2;     %Record holder
 [Lop] = - D .* ( GridObj.kx2D .^ 2 + GridObj.ky2D .^ 2);
 Prop = exp(Lop .* TimeObj.dt);   % Exponentiate the elements
 
-
 %%%%%%%%%%%%%%%%%%% Interaction stuff%%%%%%%%%%%%%%%%%%%%%%%%%%
 V = SSpotential(Nx,Ny,Lx,Ly,R,Rs,eps, a);
 V_FT = fftshift(fftn( V ) );
 
 %Hard rod interactions
 if Interactions
-    GammaCube_FT  = ...
-        dRhoIntCalc2D(rho,rho_FT,V_FT,ParamObj,GridObj,Mob);
+    GammaCube_FT  = dRhoIntCalc2D(rho,rho_FT,V_FT,ParamObj,GridObj,Mob);
 else
     GammaCube_FT = zeros(Nx,Ny);
 end
@@ -125,9 +122,9 @@ ShitIsFucked = 0;
 SteadyState  = 0;
 
 % First step
-%[rho_FTnext] = DenStepperBHAB1cPf( Prop, rho_FT, GammaCube_FT, NlPf );
+% [rho_FTnext] = DenStepperBHAB1cPf( Prop, rho_FT, GammaCube_FT, NlPf );
 [rho_FTnext] = DenStepperAB1cPf( Prop, rho_FT, GammaCube_FT, NlPf );
-%keyboard
+% keyboard
 for t = 1:TimeObj.N_time-1
     %Save the previous and take one step forward.
     % Save the old drho
@@ -143,22 +140,28 @@ for t = 1:TimeObj.N_time-1
         GammaCube_FT  = dRhoIntCalc2D(rho,rho_FT,V_FT,ParamObj,GridObj,Mob);
     end
     
-    [rho_FTnext] = DenStepperAB1cPf( Prop, rho_FT, GammaCube_FT, NlPf );
-%[rho_FTnext] = DenStepperBHAB1cPf( Prop, rho_FT, GammaCube_FT, NlPf );
+[rho_FTnext] = DenStepperAB1cPf( Prop, rho_FT, GammaCube_FT, NlPf );
+% [rho_FTnext] = DenStepperBHAB1cPf( Prop, rho_FT, GammaCube_FT, NlPf );
     
     %Save everything (this includes the initial state)
     if (mod(t,TimeObj.N_count)== 0)
         if SaveMe
+             if ~Interactions
+                 rho    = real(ifftn(ifftshift(rho_FT)));
+         end
             Density_rec(:,:,j_record) = rho;
             DensityFT_rec(:,:,j_record) = rho_FT;
         end %if save
         if isnan(rho)
-            fprintf('Shit is fucked\n');
+            fprintf('Shit is NAN-fucked\n');
             ShitIsFucked = 1;
-            keyboard
+        end
+        if rho < 0
+            fprintf('Shit is neg-fucked\n');
+            ShitIsFucked = 1;
         end
         if ShitIsFucked == 1 || SteadyState == 1
-            %             keyboard
+            keyboard
             break
         end
         j_record = j_record+1;
@@ -204,11 +207,17 @@ fig = figure();
 Ax = gca;
 Ax.XLim = [0 Lx];
 Ax.YLim = [0 Ly];
-Ax.ZLim = [0 max(max(max( Density_rec ) ) ) ];
+Ax.ZLim = [min(min(min( Density_rec ) ) ) max(max(max( Density_rec ) ) ) ];
+Ax.NextPlot = 'replaceChildren';
+xlabel('x'); ylabel('y'); zlabel('c');
+F( length(TimeRecVec) ) = struct('cdata',[],'colormap',[]);
+
 for i = 1:length(TimeRecVec)
-    i
-    surf( Density_rec(:,:,i) );
-    keyboard
+    titstr = sprintf('t = %f', TimeRecVec(i) );
+    title(titstr);
+    surf( GridObj.x,GridObj.y,Density_rec(:,:,i) );
+    drawnow;
+    F(i) = getframe;
 end
     
 

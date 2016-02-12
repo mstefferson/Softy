@@ -58,3 +58,5 @@ Jy_FT = fftshift(fftn(jy));
 NegDivFluxExcess_FT = - sqrt(-1) .* ( GridObj.kx2D .* Jx_FT + ...
     GridObj.ky2D .* Jy_FT  );
 
+% keyboard
+
