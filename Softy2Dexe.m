@@ -209,6 +209,7 @@ Ax = gca;
 Ax.XLim = [0 Lx];
 Ax.YLim = [0 Ly];
 Ax.ZLim = [min(min(min( Density_rec ) ) ) max(max(max( Density_rec ) ) ) ];
+Ax.CLim = [min(min(min( Density_rec ) ) ) max(max(max( Density_rec ) ) ) ];
 Ax.NextPlot = 'replaceChildren';
 xlabel('x'); ylabel('y'); zlabel('c');
 F( length(TimeRecVec) ) = struct('cdata',[],'colormap',[]);
