@@ -22,20 +22,20 @@ Ny      = 128;
 %%%%%%%%% Initial density parameters%%%%%%%%%%%%%%%%%%
 % Dimensionless  scaled concentration bc > 1.501 or bc < 1.499 if
 % perturbing about equilbrum
-bc  = 5.0;     % Scaled concentration
+bc  = 3.5;     % Scaled concentration
 R   = 1;        % Disk raidus
-Rs  = 2;        % Soft shoulder distance
+Rs  = 1.855;        % Soft shoulder distance
 Lx  = 10*R;     % Box length
 Ly  = 10*R;     % Box length
 
 %%%%%%%%%%%%%%%Time recording %%%%%%%%%%%%%%%%%%%%%%%%%%
 dt          = 1e-3; %time step
 t_rec       = 1e-1; %time interval for recording dynamics
-t_tot       = 4;   %total time
+t_tot       = 10;   %total time
 ss_epsilon  = 1e-8;                          %steady state condition
 
-NumModesX   = 1;
-NumModesY   = 1;
+NumModesX   = 4;
+NumModesY   = 4;
 
 % Weight of the spatial sinusoidal perturbation. %
 % Perturbations added to rho(i,j,k) = 1. Must be small
@@ -48,7 +48,7 @@ StepMeth = 0;  % Not in yet
 %%%%%%%%%%%%%%%%%%%%% Physical Parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 Tmp    = 1;            % Temperature
 eps    = 1.0;
-a      = 0.1;
+a      = 0.0;
 
 % mobility
 Mob = 1;
@@ -74,7 +74,7 @@ kx0 = Nx/2+1;
 ky0 = Ny/2+1;
 for i = 1:NumModesX
     for j = 1:NumModesY
-       rho = rho +  WeightPos * c * ( ...
+       rho = rho +  rand() * WeightPos * c * ( ...
             cos( GridObj.kx(kx0 + i) .* GridObj.x2D + GridObj.ky(ky0 + j) * GridObj.y2D ) + ...
             sin( GridObj.kx(kx0 + i) .* GridObj.x2D + GridObj.ky(ky0 + j) * GridObj.y2D ) );
     end
@@ -157,7 +157,7 @@ for t = 1:TimeObj.N_time-1
             fprintf('Shit is NAN-fucked\n');
             ShitIsFucked = 1;
         end
-        if rho < 0
+        if min(min(min(rho))) < 0
             fprintf('Shit is neg-fucked\n');
             ShitIsFucked = 1;
         end
@@ -203,24 +203,51 @@ DenRecObj = struct('DidIBreak', ShitIsFucked,'SteadyState', SteadyState,...
     'bc',ParamObj.bc,...
     'Density_rec',Density_rec,'DensityFT_rec', DensityFT_rec);
 
+%%
+nFrames = length(TimeRecVec);
+% keyboard
+set(gcf,'renderer','zbuffer')
 
-fig = figure();
-Ax = gca;
-Ax.XLim = [0 Lx];
-Ax.YLim = [0 Ly];
-Ax.ZLim = [min(min(min( Density_rec ) ) ) max(max(max( Density_rec ) ) ) ];
-Ax.CLim = [min(min(min( Density_rec ) ) ) max(max(max( Density_rec ) ) ) ];
-Ax.NextPlot = 'replaceChildren';
-xlabel('x'); ylabel('y'); zlabel('c');
+axh1 = subplot(1,2,1); % Save the handle of the subplot
+colorbar('peer',axh1);
+axpos1 = get(axh1,'position'); % Save the position as ax
+set(axh1,'NextPlot','replaceChildren',...
+    'CLim', [0 max(max(max(Density_rec)))],...
+    'YDir','normal');
+set(axh1,'position',axpos1); % Manually setting this holds the position with colorbar
+axh1.XTick = 0:Lx/5:Lx; axh1.YTick = 0:Ly/5:Ly;
+xlabel('x'); ylabel('y')
+axis square
+
+
+
+axh2 = subplot(1,2,2); % Save the handle of the subplot
+colorbar('peer',axh2);
+axpos2 = get(axh2,'position'); % Save the position as ax
+set(axh2,'NextPlot','replaceChildren',...
+    'CLim',[min(min(min(log( Density_rec ) ))) max(max(max(log( Density_rec ) )))],...
+    'YDir','normal');
+set(axh2,'position',axpos2); % Manually setting this holds the position with colorbar
+axh2.XTick = 0:Lx/5:Lx; axh2.YTick = 0:Ly/5:Ly;
+xlabel('x'); ylabel('y')
+axis square
+
 F( length(TimeRecVec) ) = struct('cdata',[],'colormap',[]);
 
 for i = 1:length(TimeRecVec)
-    titstr = sprintf('t = %f', TimeRecVec(i) );
-    title(titstr);
-    pcolor( GridObj.x,GridObj.y,Density_rec(:,:,i) );
-    colorbar;
-    drawnow;
+    titstr = sprintf('c(x,y) t = %.1f', TimeRecVec(i) );
+    title(axh1,titstr);
+    pcolor( axh1,GridObj.x,GridObj.y,Density_rec(:,:,i) );
+    shading(axh1,'interp')
+
+    titstr = sprintf('log( c(x,y) ) t = %.1f', TimeRecVec(i) );
+    title(axh2,titstr);
+    pcolor( axh2,GridObj.x,GridObj.y, log(Density_rec(:,:,i))  );
+    shading(axh2,'interp')
+   
+
     F(i) = getframe;
+%     keyboard
 end
     
 
