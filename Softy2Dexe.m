@@ -22,7 +22,7 @@ Ny      = 128;
 %%%%%%%%% Initial density parameters%%%%%%%%%%%%%%%%%%
 % Dimensionless  scaled concentration bc > 1.501 or bc < 1.499 if
 % perturbing about equilbrum
-bc  = 3.5;     % Scaled concentration
+bc  = 4.0;     % Scaled concentration
 R   = 1;        % Disk raidus
 Rs  = 1.855;        % Soft shoulder distance
 Lx  = 10*R;     % Box length
@@ -30,7 +30,7 @@ Ly  = 10*R;     % Box length
 
 %%%%%%%%%%%%%%%Time recording %%%%%%%%%%%%%%%%%%%%%%%%%%
 dt          = 1e-3; %time step
-t_rec       = 1e-1; %time interval for recording dynamics
+t_rec       = 0.5e-1; %time interval for recording dynamics
 t_tot       = 10;   %total time
 ss_epsilon  = 1e-8;                          %steady state condition
 
@@ -48,7 +48,7 @@ StepMeth = 0;  % Not in yet
 %%%%%%%%%%%%%%%%%%%%% Physical Parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 Tmp    = 1;            % Temperature
 eps    = 1.0;
-a      = 0.0;
+a      = 0.1;
 
 % mobility
 Mob = 1;
@@ -116,22 +116,26 @@ else
     GammaCube_FT = zeros(Nx,Ny);
 end
 
-%NlPf = TimeObj.dt / 2 .* ( 1 + Prop);
-NlPf = TimeObj.dt;
+NlPf = TimeObj.dt / 2 .* ( 1 + Prop);
+ 
+%NlPf = TimeObj.dt;
 tic
 ShitIsFucked = 0;
 SteadyState  = 0;
 
 % First step
-% [rho_FTnext] = DenStepperBHAB1cPf( Prop, rho_FT, GammaCube_FT, NlPf );
 [rho_FTnext] = DenStepperAB1cPf( Prop, rho_FT, GammaCube_FT, NlPf );
+% [rho_FTnext] = DenStepperBHAB1cPf( Prop, rho_FT, GammaCube_FT, NlPf );
+
+ NlPf = TimeObj.dt / 2 * ( 2 + Prop );
+ NlPrevPf = TimeObj.dt / 2;
 % keyboard
 for t = 1:TimeObj.N_time-1
     %Save the previous and take one step forward.
     % Save the old drho
     GammaCube_FTprev = GammaCube_FT;
     rho_FTprev  = rho_FT;
-    
+
     %Need to update rho!!!
     rho_FT      = rho_FTnext;
     
@@ -141,9 +145,10 @@ for t = 1:TimeObj.N_time-1
         GammaCube_FT  = dRhoIntCalc2D(rho,rho_FT,V_FT,ParamObj,GridObj,Mob);
     end
     
-[rho_FTnext] = DenStepperAB1cPf( Prop, rho_FT, GammaCube_FT, NlPf );
-% [rho_FTnext] = DenStepperBHAB1cPf( Prop, rho_FT, GammaCube_FT, NlPf );
-    
+%[rho_FTnext] = DenStepperAB1cPf( Prop, rho_FT, GammaCube_FT, NlPf );
+%[rho_FTnext] = DenStepperBHAB1cPf( Prop, rho_FT, GammaCube_FT, NlPf );
+ [rho_FTnext] = DenStepperBHAB2cPf( Prop, rho_FT, GammaCube_FT,...
+     GammaCube_FTprev, NlPf, NlPrevPf );
     %Save everything (this includes the initial state)
     if (mod(t,TimeObj.N_count)== 0)
         if SaveMe
@@ -162,7 +167,7 @@ for t = 1:TimeObj.N_time-1
             ShitIsFucked = 1;
         end
         if ShitIsFucked == 1 || SteadyState == 1
-            keyboard
+            %keyboard
             break
         end
         j_record = j_record+1;
@@ -204,6 +209,12 @@ DenRecObj = struct('DidIBreak', ShitIsFucked,'SteadyState', SteadyState,...
     'Density_rec',Density_rec,'DensityFT_rec', DensityFT_rec);
 
 %%
+if ShitIsFucked == 0
+Fig = figure();
+set(Fig, 'WindowStyle', 'normal');
+%PosVec = [680 558 1200 800];
+%Fig.Position = PosVec;
+
 nFrames = length(TimeRecVec);
 % keyboard
 set(gcf,'renderer','zbuffer')
@@ -232,7 +243,13 @@ axh2.XTick = 0:Lx/5:Lx; axh2.YTick = 0:Ly/5:Ly;
 xlabel('x'); ylabel('y')
 axis square
 
-F( length(TimeRecVec) ) = struct('cdata',[],'colormap',[]);
+
+%Initialize the movie structure
+MovStr = sprintf('SoftCrys%.d.avi',trial);
+Mov = VideoWriter(MovStr);
+Mov.FrameRate = 4;
+open(Mov);
+%F( length(TimeRecVec) ) = struct('cdata',[],'colormap',[]);
 
 for i = 1:length(TimeRecVec)
     titstr = sprintf('c(x,y) t = %.1f', TimeRecVec(i) );
@@ -246,9 +263,12 @@ for i = 1:length(TimeRecVec)
     shading(axh2,'interp')
    
 
-    F(i) = getframe;
+   % F = getframe(Fig,[0 0 PosVec(3) PosVec(4)]);
+   F = getframe(Fig);
+    writeVideo(Mov,F);
 %     keyboard
 end
     
+close(Mov);
 
-
+end %% ShitIsFucked plotter
